@@ -2,6 +2,7 @@ extern crate clap;
 
 use clap::{App, Arg};
 use log::{debug, error, info, trace, warn};
+use git_version::git_version;
 
 mod model;
 mod analyze;
@@ -12,10 +13,11 @@ use crate::render::render;
 
 const APPNAME: &str = "timetracking";
 const VERSION: &str = "0.0.1";
+const GITVERSION: &str = git_version!();
 
 fn main() {
     let matches = App::new(APPNAME)
-        .version(VERSION)
+        .version(format!("{} ({})", VERSION, GITVERSION).as_str())
         .author("Kris Hardy <hardyrk@gmail.com>")
         .about("Generates reports from timetracking CSV files")
         .arg(
