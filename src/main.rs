@@ -10,9 +10,12 @@ mod render;
 use crate::analyze::Statistics;
 use crate::render::render;
 
+const APPNAME: &str = "timetracking";
+const VERSION: &str = "0.0.1";
+
 fn main() {
-    let matches = App::new("timetracking")
-        .version("0.0.1")
+    let matches = App::new(APPNAME)
+        .version(VERSION)
         .author("Kris Hardy <hardyrk@gmail.com>")
         .about("Generates reports from timetracking CSV files")
         .arg(
