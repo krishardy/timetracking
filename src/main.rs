@@ -17,7 +17,7 @@ along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 use clap::{App, Arg};
-use log::{debug, error, info, trace, warn};
+use log::{error, warn};
 use git_version::git_version;
 
 mod model;
