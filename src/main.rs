@@ -28,7 +28,7 @@ use crate::analyze::Statistics;
 use crate::render::render;
 
 const APPNAME: &str = "timetracking";
-const VERSION: &str = "0.0.1";
+const VERSION: &str = "0.1.0";
 const GITVERSION: &str = git_version!();
 
 fn main() {

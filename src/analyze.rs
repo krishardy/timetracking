@@ -51,19 +51,26 @@ impl Statistics {
             self.update_max_project_len(record.project.len());
             match record.submitted.as_str() {
                 "y" | "yes" | "true" => continue,
+                "n" | "no" | "false" => continue,
                 _ => {
                     debug!("{:?}", record);
     
-                    let mut start: chrono::DateTime<chrono::Local> = chrono::Local::now();
+                    let start: chrono::DateTime<chrono::Local>;
                     match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
                         Ok(d) => start = d,
-                        Err(e) => error!("start time [{}] cannot be parsed with format [{}]: {}", record.start, timestamp_format, e)
+                        Err(e) => {
+                            error!("start time [{}] cannot be parsed with format [{}]: {}", record.start, timestamp_format, e);
+                            continue;
+                        }
                     }
     
-                    let mut end: chrono::DateTime<chrono::Local> = chrono::Local::now();
+                    let end: chrono::DateTime<chrono::Local>;
                     match Local.datetime_from_str(record.end.as_str(), timestamp_format) {
                         Ok(d) => end = d,
-                        Err(e) => error!("end time [{}] cannot be parsed with format [{}]: {}", record.end, timestamp_format, e)
+                        Err(e) => {
+                            error!("end time [{}] cannot be parsed with format [{}]: {}", record.end, timestamp_format, e);
+                            continue;
+                        }
                     }
     
                     let date: chrono::Date<chrono::Local> = start.date();
