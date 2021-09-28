@@ -48,7 +48,6 @@ impl Statistics {
         let mut rdr = csv::Reader::from_path(infile)?;
         for result in rdr.deserialize() {
             let record: TimesheetRecord = result?;
-            self.update_max_project_len(record.project.len());
             match record.submitted.as_str() {
                 "y" | "yes" | "true" => continue,
                 "n" | "no" | "false" => continue,
@@ -56,6 +55,7 @@ impl Statistics {
                     debug!("{:?}", record);
     
                     let start: chrono::DateTime<chrono::Local>;
+                    self.update_max_project_len(record.project.len());                    
                     match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
                         Ok(d) => start = d,
                         Err(e) => {
