@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use clap::{App, Arg};
+use clap::{App, Arg, crate_version, crate_authors};
 use log::{error, warn};
 use git_version::git_version;
 
@@ -27,14 +27,19 @@ mod render;
 use crate::analyze::Statistics;
 use crate::render::render;
 
+#[cfg(windows)]
+const OS_EOL: &'static str = "\r\n";
+#[cfg(not(windows))]
+const OS_EOL: &'static str = "\n";
+
 const APPNAME: &str = "timetracking";
-const VERSION: &str = "0.1.0";
+const VERSION: &str = crate_version!();
 const GITVERSION: &str = git_version!();
 
 fn main() {
     let matches = App::new(APPNAME)
         .version(format!("{} ({})", VERSION, GITVERSION).as_str())
-        .author("Copyright (C) 2021  Kris Hardy <hardyrk@gmail.com>")
+        .author(format!("Copyright (C) 2021  {}{}All rights reserved.", crate_authors!(), OS_EOL).as_str())
         .about("Generates reports from timetracking CSV files")
         .arg(
             Arg::with_name("verbose")
