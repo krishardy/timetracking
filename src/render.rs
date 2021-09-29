@@ -21,6 +21,7 @@ use std::io::Result;
 
 pub fn render(statistics: &Statistics) -> Result<()> {
     // Render statistics
+    println!("=== REPORT ===");
     for (date, project_time_map) in statistics.date_projects.iter() {
         println!("{}", date.format("%Y-%m-%d"));
         let mut sum = 0;

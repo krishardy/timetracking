@@ -44,6 +44,7 @@ impl Statistics {
 
     pub fn calculate(&mut self, infile: &str) -> Result<(), Box<dyn std::error::Error>> {
         let timestamp_format = "%Y-%m-%d %H:%M";
+        let time_format = "%H:%M";
     
         let mut rdr = csv::Reader::from_path(infile)?;
         for result in rdr.deserialize() {
@@ -55,7 +56,9 @@ impl Statistics {
                     debug!("{:?}", record);
     
                     let start: chrono::DateTime<chrono::Local>;
-                    self.update_max_project_len(record.project.len());                    
+                    self.update_max_project_len(record.project.len());
+                    
+                    // start must be a datetime
                     match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
                         Ok(d) => start = d,
                         Err(e) => {
@@ -64,12 +67,21 @@ impl Statistics {
                         }
                     }
     
+                    // end can be a date or a datetime
                     let end: chrono::DateTime<chrono::Local>;
                     match Local.datetime_from_str(record.end.as_str(), timestamp_format) {
                         Ok(d) => end = d,
-                        Err(e) => {
-                            error!("end time [{}] cannot be parsed with format [{}]: {}", record.end, timestamp_format, e);
-                            continue;
+                        Err(_) => {
+                            // Is this just a time instead?
+                            match NaiveTime::parse_from_str(record.end.as_str(), time_format) {
+                                Ok(d) => {
+                                    end = Local.ymd(start.year(), start.month(), start.day()).and_hms(d.hour(), d.minute(), d.second());
+                                },
+                                Err(e) => {
+                                    error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", record.end, timestamp_format, time_format, e);
+                                    continue;        
+                                }
+                            }
                         }
                     }
     
