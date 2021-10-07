@@ -46,9 +46,12 @@ impl Statistics {
         let timestamp_format = "%Y-%m-%d %H:%M";
         let time_format = "%H:%M";
     
+        let mut prev_date: Option<chrono::Date<chrono::Local>> = None;
+
         let mut rdr = csv::Reader::from_path(infile)?;
         for result in rdr.deserialize() {
             let record: TimesheetRecord = result?;
+
             match record.submitted.as_str() {
                 "y" | "yes" | "true" => continue,
                 "n" | "no" | "false" => continue,
@@ -58,33 +61,45 @@ impl Statistics {
                     let start: chrono::DateTime<chrono::Local>;
                     self.update_max_project_len(record.project.len());
                     
-                    // start must be a datetime
-                    match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
-                        Ok(d) => start = d,
+                    // start must be a datetime or a time
+                    // If start is a time, use the previously parsed date
+                    start = match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
+                        Ok(dt) => dt,
                         Err(e) => {
-                            error!("start time [{}] cannot be parsed with format [{}]: {}", record.start, timestamp_format, e);
-                            continue;
+                            match NaiveTime::parse_from_str(record.start.as_str(), time_format) {
+                                Ok(t) => {
+                                    match prev_date {
+                                        Some(pd) => Local.ymd(pd.year(), pd.month(), pd.day()).and_hms(t.hour(), t.minute(), t.second()),
+                                        None => {
+                                            error!("A start time [{}] was found without a date, but no date was found on a previous line. {}", record.start, e);
+                                            continue;
+                                        }
+                                    }
+                                },
+                                Err(e) => {
+                                    error!("start time [{}] cannot be parsed with format [{}] or [{}]: {}", record.start, timestamp_format, time_format, e);
+                                    continue;
+                                }
+                            }
                         }
-                    }
-    
-                    // end can be a date or a datetime
-                    let end: chrono::DateTime<chrono::Local>;
-                    match Local.datetime_from_str(record.end.as_str(), timestamp_format) {
-                        Ok(d) => end = d,
+                    };
+                    
+                    // end can be a time or a datetime
+                    let end = match Local.datetime_from_str(record.end.as_str(), timestamp_format) {
+                        Ok(d) => d,
                         Err(_) => {
                             // Is this just a time instead?
                             match NaiveTime::parse_from_str(record.end.as_str(), time_format) {
-                                Ok(d) => {
-                                    end = Local.ymd(start.year(), start.month(), start.day()).and_hms(d.hour(), d.minute(), d.second());
-                                },
+                                Ok(d) => Local.ymd(start.year(), start.month(), start.day()).and_hms(d.hour(), d.minute(), d.second()),
                                 Err(e) => {
                                     error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", record.end, timestamp_format, time_format, e);
                                     continue;        
                                 }
                             }
                         }
-                    }
+                    };
     
+                    prev_date = Some(start.date());
                     let date: chrono::Date<chrono::Local> = start.date();
                     match self.date_projects.entry(date) {
                         Entry::Occupied(project_time_map) => {
