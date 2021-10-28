@@ -1,8 +1,7 @@
 submitted,project,start,end,notes
-,proj1,2021-01-01 10:00,2021-01-01 11:00,setup
-,proj1,2021-01-01 11:00,2021-01-01 12:00,working
-,proj1,2021-01-01 11:00,2021-01-01 12:00,working
-,proj2abcd,2021-01-01 12:00,2021-01-01 13:00,working
+,proj1,2021-01-01 10:00,11:00,setup
+,proj1,11:00,,working
+,proj2abcd,12:00,13:00,working
 
 ,proj1,2021-01-02 12:00,2021-01-02 13:00,finishing
 ,proj2,2021-01-02 11:00,2021-01-02 12:00,

@@ -17,12 +17,22 @@ along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Local};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TimesheetRecord {
     pub submitted: String,
     pub project: String,
     pub start: String, // chrono::DateTime<chrono::Local>
-    pub end: String, //chrono::DateTime<chrono::Local>
+    pub end: Option<String>, //Optional chrono::DateTime<chrono::Local>
     pub notes: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedTimesheetRecord {
+    pub project: String,
+    pub start: DateTime<Local>,
+    pub end: Option<DateTime<Local>>,
+    pub notes: String,
+    pub deferred: bool,
 }
