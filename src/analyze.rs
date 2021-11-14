@@ -46,8 +46,6 @@ impl Statistics {
         let timestamp_format = "%Y-%m-%d %H:%M";
         let time_format = "%H:%M";
     
-        //let mut prev_date: Option<chrono::Date<chrono::Local>> = None;
-
         let mut prev_record = ParsedTimesheetRecord {
             project: String::new(),
             start: Local::now(),
@@ -55,81 +53,87 @@ impl Statistics {
             notes: String::new(),
             deferred: false,
         };
-        //let deferred_record: Option<ParsedTimesheetRecord> = None;
 
         let mut rdr = csv::Reader::from_path(infile)?;
         for result in rdr.deserialize() {
-            let record: TimesheetRecord = result?;
-
-            match record.submitted.as_str() {
-                "y" | "yes" | "true" => continue,
-                "n" | "no" | "false" => continue,
-                _ => {
-                    let mut parsed_record = ParsedTimesheetRecord {
-                        project: record.project.clone(),
-                        start: Local::now(),
-                        end: None,
-                        notes: record.notes.clone(),
-                        deferred: false,
-                    };
-
-                    debug!("{:?}", record);
-    
-                    //let start: chrono::DateTime<chrono::Local>;
-                    self.update_max_project_len(record.project.len());
-                    
-                    // start must be a datetime or a time
-                    // If start is a time, use the previously parsed date
-                    parsed_record.start = match Local.datetime_from_str(record.start.as_str(), timestamp_format) {
-                        Ok(dt) => dt,
-                        Err(_) => {
-                            match NaiveTime::parse_from_str(record.start.as_str(), time_format) {
-                                Ok(t) => {
-                                    Local.ymd(prev_record.start.year(), prev_record.start.month(), prev_record.start.day())
-                                        .and_hms(t.hour(), t.minute(), t.second())
+            match result {
+                Ok(r) => {
+                    let model: TimesheetRecord = r;
+                    match model.submitted.as_str() {
+                        "y" | "yes" | "true" => continue,
+                        "n" | "no" | "false" => continue,
+                        "#" => continue,
+                        _ => {
+                            let mut parsed_record = ParsedTimesheetRecord {
+                                project: model.project.clone(),
+                                start: Local::now(),
+                                end: None,
+                                notes: model.notes.clone(),
+                                deferred: false,
+                            };
+        
+                            debug!("{:?}", model);
+            
+                            //let start: chrono::DateTime<chrono::Local>;
+                            self.update_max_project_len(model.project.len());
+                            
+                            // start must be a datetime or a time
+                            // If start is a time, use the previously parsed date
+                            parsed_record.start = match Local.datetime_from_str(model.start.as_str(), timestamp_format) {
+                                Ok(dt) => dt,
+                                Err(_) => {
+                                    match NaiveTime::parse_from_str(model.start.as_str(), time_format) {
+                                        Ok(t) => {
+                                            Local.ymd(prev_record.start.year(), prev_record.start.month(), prev_record.start.day())
+                                                .and_hms(t.hour(), t.minute(), t.second())
+                                        },
+                                        Err(e) => {
+                                            error!("start time [{}] cannot be parsed with format [{}] or [{}]: {}", model.start, timestamp_format, time_format, e);
+                                            continue;
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            // If end is empty, defer calculating the end until the next record is read and use its start time
+                            //let mut end : Option<DateTime<Local>>;
+                            parsed_record.end = match model.end {
+                                Some(e) => {
+                                    match self.parse_end_date(e.as_str(), parsed_record.start, timestamp_format, time_format) {
+                                        Ok(end_dt) => Some(end_dt),
+                                        Err(e) => {
+                                            error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", e, timestamp_format, time_format, e);
+                                            continue;        
+                                        },
+                                    }
                                 },
-                                Err(e) => {
-                                    error!("start time [{}] cannot be parsed with format [{}] or [{}]: {}", record.start, timestamp_format, time_format, e);
-                                    continue;
+                                None => {
+                                    parsed_record.deferred = true;
+                                    None
+                                },
+                            };
+        
+                            match prev_record.deferred {
+                                true => {
+                                    // Set the end time to the start time of the current record and process the prev_record
+                                    prev_record.end = Some(parsed_record.start.clone());
+                                    self.accumulate_record(&prev_record)
+                                },
+                                false => {
+                                    // Nothing to do
                                 }
                             }
-                        }
-                    };
-                    
-                    // If end is empty, defer calculating the end until the next record is read and use its start time
-                    //let mut end : Option<DateTime<Local>>;
-                    parsed_record.end = match record.end {
-                        Some(e) => {
-                            match self.parse_end_date(e.as_str(), parsed_record.start, timestamp_format, time_format) {
-                                Ok(end_dt) => Some(end_dt),
-                                Err(e) => {
-                                    error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", e, timestamp_format, time_format, e);
-                                    continue;        
-                                },
+        
+                            if !parsed_record.deferred {
+                                self.accumulate_record(&parsed_record)
                             }
+        
+                            prev_record = parsed_record.clone();
                         },
-                        None => {
-                            parsed_record.deferred = true;
-                            None
-                        },
-                    };
-
-                    match prev_record.deferred {
-                        true => {
-                            // Set the end time to the start time of the current record and process the prev_record
-                            prev_record.end = Some(parsed_record.start.clone());
-                            self.accumulate_record(&prev_record)
-                        },
-                        false => {
-                            // Nothing to do
-                        }
                     }
-
-                    if !parsed_record.deferred {
-                        self.accumulate_record(&parsed_record)
-                    }
-
-                    prev_record = parsed_record.clone();
+                },
+                Err(e) => {
+                    error!("Row could not be parsed: {}", e);                    
                 },
             }
         }

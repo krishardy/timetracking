@@ -5,3 +5,8 @@ submitted,project,start,end,notes
 
 ,proj1,2021-01-02 12:00,2021-01-02 13:00,finishing
 ,proj2,2021-01-02 11:00,2021-01-02 12:00,
+
+# Comment
+
+,proj1,2021-01-03 11:00,12:00,
+#,should be commented,12:00,13:00,
