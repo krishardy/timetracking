@@ -15,3 +15,14 @@ If running the binary directly:
 ```
 $ ./timetracking example.csv
 ```
+
+Installing the project
+
+```
+$ cargo install --path .
+```
+
+Updating rust
+
+```
+$ rustup
