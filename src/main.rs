@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use clap::{App, Arg, crate_version, crate_authors};
+use clap::{App, Arg, arg, crate_version, crate_authors};
 use log::{error, warn};
 use git_version::git_version;
 
@@ -42,12 +42,12 @@ fn main() {
         .author(format!("Copyright (C) 2021  {}{}All rights reserved.", crate_authors!(), OS_EOL).as_str())
         .about("Generates reports from timetracking CSV files")
         .arg(
-            Arg::with_name("verbose")
-                .short("v")
-                .multiple(true)
+            Arg::new("verbose")
+                .short('v')
+                .multiple_occurrences(true)
                 .help("Increase logging verbosity (can be used multiple times)")
         )
-        .args_from_usage("<infile> 'Input CSV file'")
+        .arg(arg!(<infile> "Input CSV file"))
         .get_matches();
 
     let level = match matches.occurrences_of("verbose") {

@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use log::{debug, error};
 use std::cmp::max;
 use std::collections::btree_map::Entry;
+use csv::{ReaderBuilder};
 
 use super::model::{TimesheetRecord, ParsedTimesheetRecord};
 
@@ -54,7 +55,12 @@ impl Statistics {
             deferred: false,
         };
 
-        let mut rdr = csv::Reader::from_path(infile)?;
+        let mut rdr = ReaderBuilder::new()
+            .delimiter(b',')
+            .comment(Some(b'#'))
+            .from_path(infile)
+            .expect("infile could not be read");
+
         for result in rdr.deserialize() {
             match result {
                 Ok(r) => {
@@ -132,8 +138,8 @@ impl Statistics {
                         },
                     }
                 },
-                Err(e) => {
-                    error!("Row could not be parsed: {}", e);                    
+                Err(ref e) => {
+                    error!("Row could not be parsed: {:?}", e);                  
                 },
             }
         }
