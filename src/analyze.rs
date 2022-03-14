@@ -43,7 +43,7 @@ impl Statistics {
         }
     }
 
-    pub fn calculate(&mut self, infile: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn calculate(&mut self, infile: &str, ignore_submitted: bool) -> Result<(), Box<dyn std::error::Error>> {
         let timestamp_format = "%Y-%m-%d %H:%M";
         let time_format = "%H:%M";
     
@@ -65,7 +65,22 @@ impl Statistics {
             match result {
                 Ok(r) => {
                     let model: TimesheetRecord = r;
-                    match model.submitted.as_str() {
+                    
+                    // Override submitted if ignore_submitted == true
+                    let mut submitted = model.submitted.as_str();
+                    if ignore_submitted {
+                        match model.submitted.as_str() {
+                            "y" | "yes" | "true" => {
+                                submitted = "";
+                            }
+                            "n" | "no" | "false" => {
+                                submitted = "";
+                            }
+                            _ => continue
+                        }
+                    }
+
+                    match submitted {
                         "y" | "yes" | "true" => continue,
                         "n" | "no" | "false" => continue,
                         "#" => continue,

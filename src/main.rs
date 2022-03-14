@@ -47,6 +47,12 @@ fn main() {
                 .multiple_occurrences(true)
                 .help("Increase logging verbosity (can be used multiple times)")
         )
+        .arg(
+            Arg::new("ignore-submitted")
+                .short('i')
+                .long("ignore-submitted")
+                .help("Ignore the value of the submitted column")
+        )
         .arg(arg!(<infile> "Input CSV file"))
         .get_matches();
 
@@ -60,9 +66,11 @@ fn main() {
     setup_logger(level).unwrap();
     warn!("Logging level set to: {}", level);
 
+    let ignore_submitted = matches.is_present("ignore-submitted");
+
     if let Some(infile) = matches.value_of("infile") {
         let mut stats = Statistics::new();
-        match stats.calculate(infile) {
+        match stats.calculate(infile, ignore_submitted) {
             Ok(_) => render(&stats).unwrap(),
             Err(err) => error!("An error was returned during processing of the input file. {}", err),
         }
