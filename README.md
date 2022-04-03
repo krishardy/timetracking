@@ -26,3 +26,4 @@ Updating rust
 
 ```
 $ rustup
+```
