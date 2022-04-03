@@ -44,9 +44,6 @@ impl Statistics {
     }
 
     pub fn calculate(&mut self, infile: &str, ignore_submitted: bool) -> Result<(), Box<dyn std::error::Error>> {
-        let timestamp_format = "%Y-%m-%d %H:%M";
-        let time_format = "%H:%M";
-    
         let mut prev_record = ParsedTimesheetRecord {
             project: String::new(),
             start: Local::now(),
@@ -85,71 +82,7 @@ impl Statistics {
                         "n" | "no" | "false" => continue,
                         "#" => continue,
                         _ => {
-                            let mut parsed_record = ParsedTimesheetRecord {
-                                project: model.project.clone(),
-                                start: Local::now(),
-                                end: None,
-                                notes: model.notes.clone(),
-                                deferred: false,
-                            };
-        
-                            debug!("{:?}", model);
-            
-                            //let start: chrono::DateTime<chrono::Local>;
-                            self.update_max_project_len(model.project.len());
-                            
-                            // start must be a datetime or a time
-                            // If start is a time, use the previously parsed date
-                            parsed_record.start = match Local.datetime_from_str(model.start.as_str(), timestamp_format) {
-                                Ok(dt) => dt,
-                                Err(_) => {
-                                    match NaiveTime::parse_from_str(model.start.as_str(), time_format) {
-                                        Ok(t) => {
-                                            Local.ymd(prev_record.start.year(), prev_record.start.month(), prev_record.start.day())
-                                                .and_hms(t.hour(), t.minute(), t.second())
-                                        },
-                                        Err(e) => {
-                                            error!("start time [{}] cannot be parsed with format [{}] or [{}]: {}", model.start, timestamp_format, time_format, e);
-                                            continue;
-                                        }
-                                    }
-                                }
-                            };
-                            
-                            // If end is empty, defer calculating the end until the next record is read and use its start time
-                            //let mut end : Option<DateTime<Local>>;
-                            parsed_record.end = match model.end {
-                                Some(e) => {
-                                    match self.parse_end_date(e.as_str(), parsed_record.start, timestamp_format, time_format) {
-                                        Ok(end_dt) => Some(end_dt),
-                                        Err(e) => {
-                                            error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", e, timestamp_format, time_format, e);
-                                            continue;        
-                                        },
-                                    }
-                                },
-                                None => {
-                                    parsed_record.deferred = true;
-                                    None
-                                },
-                            };
-        
-                            match prev_record.deferred {
-                                true => {
-                                    // Set the end time to the start time of the current record and process the prev_record
-                                    prev_record.end = Some(parsed_record.start.clone());
-                                    self.accumulate_record(&prev_record)
-                                },
-                                false => {
-                                    // Nothing to do
-                                }
-                            }
-        
-                            if !parsed_record.deferred {
-                                self.accumulate_record(&parsed_record)
-                            }
-        
-                            prev_record = parsed_record.clone();
+                            self.parse_record(model, &mut prev_record).unwrap_or_default();
                         },
                     }
                 },
@@ -158,6 +91,88 @@ impl Statistics {
                 },
             }
         }
+
+        // If previous record does not have an end date/time, show a warning
+        if prev_record.deferred {
+            error!("The last record did not have an end time set, so is using a default value of Local:now()");
+            prev_record.end = Some(Local::now());
+            self.accumulate_record(&prev_record)
+        }
+
+        Ok(())
+    }
+
+    fn parse_record(&mut self, model: TimesheetRecord, prev_record: &mut ParsedTimesheetRecord) -> Result<(), Box<dyn std::error::Error>> {
+        let timestamp_format = "%Y-%m-%d %H:%M";
+        let time_format = "%H:%M";
+    
+        let mut parsed_record = ParsedTimesheetRecord {
+            project: model.project.clone(),
+            start: Local::now(),
+            end: None,
+            notes: model.notes.clone(),
+            deferred: false,
+        };
+
+        debug!("{:?}", model);
+
+        //let start: chrono::DateTime<chrono::Local>;
+        self.update_max_project_len(model.project.len());
+        
+        // start must be a datetime or a time
+        // If start is a time, use the previously parsed date
+        parsed_record.start = match Local.datetime_from_str(model.start.as_str(), timestamp_format) {
+            Ok(dt) => dt,
+            Err(_) => {
+                match NaiveTime::parse_from_str(model.start.as_str(), time_format) {
+                    Ok(t) => {
+                        Local.ymd(prev_record.start.year(), prev_record.start.month(), prev_record.start.day())
+                            .and_hms(t.hour(), t.minute(), t.second())
+                    },
+                    Err(e) => {
+                        error!("start time [{}] cannot be parsed with format [{}] or [{}]: {}", model.start, timestamp_format, time_format, e);
+                        return Ok(());
+                        //continue;
+                    }
+                }
+            }
+        };
+        
+        // If end is empty, defer calculating the end until the next record is read and use its start time
+        //let mut end : Option<DateTime<Local>>;
+        parsed_record.end = match model.end {
+            Some(e) => {
+                match self.parse_end_date(e.as_str(), parsed_record.start, timestamp_format, time_format) {
+                    Ok(end_dt) => Some(end_dt),
+                    Err(e) => {
+                        error!("end time [{}] cannot be parsed with format [{}] or [{}]: {}", e, timestamp_format, time_format, e);
+                        return Ok(());
+                        //continue;        
+                    },
+                }
+            },
+            None => {
+                parsed_record.deferred = true;
+                None
+            },
+        };
+
+        match prev_record.deferred {
+            true => {
+                // Set the end time to the start time of the current record and process the prev_record
+                prev_record.end = Some(parsed_record.start.clone());
+                self.accumulate_record(&prev_record)
+            },
+            false => {
+                // Nothing to do
+            }
+        }
+
+        if !parsed_record.deferred {
+            self.accumulate_record(&parsed_record)
+        }
+
+        prev_record.clone_from(&parsed_record);
         Ok(())
     }
 
@@ -190,7 +205,12 @@ impl Statistics {
                     Entry::Occupied(o) => {
                         // the project is already in project_time_map. Add to it.
                         let entry = o.into_mut();
-                        *entry = *entry + (record.end.unwrap() - record.start);
+                        let time_delta = record.end.unwrap() - record.start;
+                        if time_delta < chrono::Duration::zero() {
+                            error!("Skipping record due to a negative time delta of {} minutes: Project={}, Start={}, End={}", time_delta.num_minutes(), record.project, record.start, record.end.unwrap());
+                        } else {
+                            *entry = *entry + (record.end.unwrap() - record.start);
+                        }
                     },
                     Entry::Vacant(v) => {
                         // the project is not yet in project_time_map. Initialize it.
