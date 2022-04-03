@@ -33,13 +33,14 @@ const OS_EOL: &'static str = "\r\n";
 const OS_EOL: &'static str = "\n";
 
 const APPNAME: &str = "timetracking";
+const COPYRIGHT_YEAR: &str = "2022";
 const VERSION: &str = crate_version!();
 const GITVERSION: &str = git_version!();
 
 fn main() {
     let matches = Command::new(APPNAME)
         .version(format!("{} ({})", VERSION, GITVERSION).as_str())
-        .author(format!("Copyright (C) 2021  {}{}All rights reserved.", crate_authors!(), OS_EOL).as_str())
+        .author(format!("Copyright (C) {}  {}{}All rights reserved.", COPYRIGHT_YEAR, crate_authors!(), OS_EOL).as_str())
         .about("Generates reports from timetracking CSV files")
         .arg(
             Arg::new("verbose")
