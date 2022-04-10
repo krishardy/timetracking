@@ -30,6 +30,7 @@ pub struct TimesheetRecord {
 
 #[derive(Debug, Clone)]
 pub struct ParsedTimesheetRecord {
+    pub submitted: String,
     pub project: String,
     pub start: DateTime<Local>,
     pub end: Option<DateTime<Local>>,

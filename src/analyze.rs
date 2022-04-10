@@ -45,6 +45,7 @@ impl Statistics {
 
     pub fn calculate(&mut self, infile: &str, ignore_submitted: bool) -> Result<(), Box<dyn std::error::Error>> {
         let mut prev_record = ParsedTimesheetRecord {
+            submitted: String::new(),
             project: String::new(),
             start: Local::now(),
             end: Some(Local::now()),
@@ -62,29 +63,7 @@ impl Statistics {
             match result {
                 Ok(r) => {
                     let model: TimesheetRecord = r;
-                    
-                    // Override submitted if ignore_submitted == true
-                    let mut submitted = model.submitted.as_str();
-                    if ignore_submitted {
-                        match model.submitted.as_str() {
-                            "y" | "yes" | "true" => {
-                                submitted = "";
-                            }
-                            "n" | "no" | "false" => {
-                                submitted = "";
-                            }
-                            _ => continue
-                        }
-                    }
-
-                    match submitted {
-                        "y" | "yes" | "true" => continue,
-                        "n" | "no" | "false" => continue,
-                        "#" => continue,
-                        _ => {
-                            self.parse_record(model, &mut prev_record).unwrap_or_default();
-                        },
-                    }
+                    self.parse_record(model, &mut prev_record, ignore_submitted).unwrap_or_default();
                 },
                 Err(ref e) => {
                     error!("Row could not be parsed: {:?}", e);                  
@@ -102,11 +81,12 @@ impl Statistics {
         Ok(())
     }
 
-    fn parse_record(&mut self, model: TimesheetRecord, prev_record: &mut ParsedTimesheetRecord) -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_record(&mut self, model: TimesheetRecord, prev_record: &mut ParsedTimesheetRecord, ignore_submitted: bool) -> Result<(), Box<dyn std::error::Error>> {
         let timestamp_format = "%Y-%m-%d %H:%M";
         let time_format = "%H:%M";
     
         let mut parsed_record = ParsedTimesheetRecord {
+            submitted: model.submitted.clone(),
             project: model.project.clone(),
             start: Local::now(),
             end: None,
@@ -161,7 +141,22 @@ impl Statistics {
             true => {
                 // Set the end time to the start time of the current record and process the prev_record
                 prev_record.end = Some(parsed_record.start.clone());
-                self.accumulate_record(&prev_record)
+                
+                let mut accumulate = true;
+                if !ignore_submitted {
+                    match prev_record.submitted.as_str() {
+                        "y" | "yes" | "true" => {
+                            accumulate = false;
+                        }
+                        "n" | "no" | "false" => {
+                            accumulate = false;
+                        }
+                        _ => {}
+                    }
+                }
+                if accumulate {
+                    self.accumulate_record(&prev_record)
+                }
             },
             false => {
                 // Nothing to do
@@ -169,7 +164,21 @@ impl Statistics {
         }
 
         if !parsed_record.deferred {
-            self.accumulate_record(&parsed_record)
+            let mut accumulate = true;
+            if !ignore_submitted {
+                match parsed_record.submitted.as_str() {
+                    "y" | "yes" | "true" => {
+                        accumulate = false;
+                    }
+                    "n" | "no" | "false" => {
+                        accumulate = false;
+                    }
+                    _ => {}
+                }
+            }
+            if accumulate {
+                self.accumulate_record(&parsed_record)
+            }
         }
 
         prev_record.clone_from(&parsed_record);
