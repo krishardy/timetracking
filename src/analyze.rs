@@ -96,9 +96,6 @@ impl Statistics {
 
         debug!("{:?}", model);
 
-        //let start: chrono::DateTime<chrono::Local>;
-        self.update_max_project_len(model.project.len());
-        
         // start must be a datetime or a time
         // If start is a time, use the previously parsed date
         parsed_record.start = match Local.datetime_from_str(model.start.as_str(), timestamp_format) {
@@ -155,6 +152,7 @@ impl Statistics {
                     }
                 }
                 if accumulate {
+                    self.update_max_project_len(prev_record.project.len());
                     self.accumulate_record(&prev_record)
                 }
             },
@@ -177,6 +175,7 @@ impl Statistics {
                 }
             }
             if accumulate {
+                self.update_max_project_len(parsed_record.project.len());
                 self.accumulate_record(&parsed_record)
             }
         }
