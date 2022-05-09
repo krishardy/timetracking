@@ -19,7 +19,6 @@ along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 use chrono::prelude::*;
 use std::collections::BTreeMap;
 use log::{debug, error};
-use std::cmp::max;
 use std::collections::btree_map::Entry;
 use csv::{ReaderBuilder};
 
@@ -32,14 +31,12 @@ type DateProjectsMap = BTreeMap<chrono::Date<chrono::Local>, ProjectTimeMap>;
 #[derive(Debug)]
 pub struct Statistics {
     pub date_projects: DateProjectsMap,
-    pub max_project_len: usize
 }
 
 impl Statistics {
     pub fn new() -> Self {
         Self {
             date_projects: DateProjectsMap::new(),
-            max_project_len: 0
         }
     }
 
@@ -152,7 +149,6 @@ impl Statistics {
                     }
                 }
                 if accumulate {
-                    self.update_max_project_len(prev_record.project.len());
                     self.accumulate_record(&prev_record)
                 }
             },
@@ -175,7 +171,6 @@ impl Statistics {
                 }
             }
             if accumulate {
-                self.update_max_project_len(parsed_record.project.len());
                 self.accumulate_record(&parsed_record)
             }
         }
@@ -199,10 +194,6 @@ impl Statistics {
             }
         };
         Ok(end_datetime)
-    }
-
-    fn update_max_project_len(&mut self, len: usize) {
-        self.max_project_len = max(self.max_project_len, len);
     }
 
     fn accumulate_record(&mut self, record: &ParsedTimesheetRecord) {

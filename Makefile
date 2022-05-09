@@ -1,7 +1,13 @@
+.PHONY: update-build
+update-build: update build
+
 .PHONY: build
 build:
-	cargo update
 	cargo build
+
+.PHONY: update
+update:
+	cargo update
 
 .PHONY: install
 install:
@@ -10,7 +16,7 @@ install:
 .PHONY: test
 test:
 	cargo test
-	target/debug/timetracking.exe example.
+	target/debug/timetracking.exe example.csv
 	
 .PHONY: clean
 clean:

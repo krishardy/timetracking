@@ -18,8 +18,10 @@ along with Timetracking.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::analyze::Statistics;
 use std::io::Result;
+use std::cmp::max;
 
 pub fn render(statistics: &Statistics) -> Result<()> {
+    let max_project_len = get_max_project_len(statistics);
     // Render statistics
     println!("=== REPORT ===");
     for (date, project_time_map) in statistics.date_projects.iter() {
@@ -30,12 +32,25 @@ pub fn render(statistics: &Statistics) -> Result<()> {
             sum = sum + total_mins;
             let hours = total_mins / 60;
             let mins = total_mins % 60;
-            println!("  {:width$} | {:02}:{:02}", project, hours, mins, width=statistics.max_project_len);
+            println!("  {:width$} | {:02}:{:02}", project, hours, mins, width=max_project_len);
         }
         let hours = sum / 60;
         let mins = sum % 60;
-        println!("  {:->width$} | {:02}:{:02}", "SUM", hours, mins, width=statistics.max_project_len);
-        println!("{:-<width$}", "", width=statistics.max_project_len+10);
+        println!("  {:->width$} | {:02}:{:02}", "SUM", hours, mins, width=max_project_len);
+        println!("{:-<width$}", "", width=max_project_len+10);
     }
     Ok(())
+}
+
+/**
+ * Calculate maximum length of project name
+ */
+pub fn get_max_project_len(statistics: &Statistics) -> usize {
+    let mut max_len = 0;
+    for (_date, project_time_map) in statistics.date_projects.iter() {
+        for (project, _duration) in project_time_map.iter() {
+            max_len = max(max_len, project.len());
+        }
+    }
+    max_len
 }
